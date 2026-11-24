@@ -58,6 +58,68 @@ function setupAutocomplete(input, list) {
 setupAutocomplete(document.querySelector("#pickup"), document.querySelector("#pickup-list"));
 setupAutocomplete(document.querySelector("#drop"), document.querySelector("#drop-list"));
 
+
+// Use the browser's Geolocation API to fill pickup coordinates automatically.
+// Geolocation requires user permission and a secure context (HTTPS or localhost).
+const pickupInput = document.querySelector("#pickup");
+const currentLocationButton = document.querySelector("#use-current-location");
+const locationStatus = document.querySelector("#location-status");
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://photon.komoot.io/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Reverse geocoding unavailable");
+    const data = await response.json();
+    const feature = data.features && data.features[0];
+    if (!feature) return "My current location";
+    const p = feature.properties || {};
+    const parts = [p.name, p.street, p.suburb, p.city || p.town || p.village, p.state]
+      .filter(Boolean);
+    return [...new Set(parts)].join(", ") || "My current location";
+  } catch {
+    return "My current location";
+  }
+}
+
+currentLocationButton.addEventListener("click", () => {
+  locationStatus.textContent = "";
+  if (!("geolocation" in navigator)) {
+    locationStatus.textContent = "Location is not supported by this browser.";
+    return;
+  }
+
+  currentLocationButton.disabled = true;
+  currentLocationButton.textContent = "Finding your location…";
+  locationStatus.textContent = "Please allow location access when your browser asks.";
+
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const label = await reverseGeocode(lat, lon);
+
+    pickupInput.value = label;
+    pickupInput.dataset.lat = String(lat);
+    pickupInput.dataset.lon = String(lon);
+    locationStatus.textContent = "Pickup location detected.";
+    currentLocationButton.disabled = false;
+    currentLocationButton.innerHTML = '<span aria-hidden="true">◎</span> Use my current location';
+  }, (error) => {
+    const messages = {
+      1: "Location permission was denied. Allow it in your browser settings and try again.",
+      2: "Your location could not be determined. Check GPS or network and retry.",
+      3: "Location request timed out. Please try again."
+    };
+    locationStatus.textContent = messages[error.code] || "Unable to get your location. Please try again.";
+    currentLocationButton.disabled = false;
+    currentLocationButton.innerHTML = '<span aria-hidden="true">◎</span> Use my current location';
+  }, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 30000
+  });
+});
+
 function haversineKm(a, b) {
   const r = (d) => (d * Math.PI) / 180;
   const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
@@ -107,14 +169,49 @@ form.addEventListener("submit", async (event) => {
   btn.disabled = false;
 
   routeSummary.textContent = `${a.label} → ${b.label}`;
+  // These are transparent planning assumptions, NOT official provider tariffs or live quotes.
+  // Tune these ranges for your launch city after collecting verified fare samples.
+  const estimateRates = {
+    Bike: {
+      Uber: { base: [20, 30], perKm: [5, 8] },
+      Ola: { base: [20, 30], perKm: [5, 8] },
+      Rapido: { base: [15, 25], perKm: [4, 7] }
+    },
+    Auto: {
+      Uber: { base: [25, 35], perKm: [9, 13] },
+      Ola: { base: [25, 35], perKm: [9, 13] },
+      Rapido: { base: [20, 30], perKm: [8, 12] }
+    },
+    Car: {
+      Uber: { base: [45, 65], perKm: [12, 17] },
+      Ola: { base: [45, 65], perKm: [12, 18] },
+      Rapido: { base: [40, 60], perKm: [11, 16] }
+    }
+  };
+  const money = (n) => `₹${Math.round(n)}`;
+  const estimateCard = (provider) => {
+    const r = estimateRates[vehicle][provider];
+    const low = r.base[0] + route.km * r.perKm[0];
+    const high = r.base[1] + route.km * r.perKm[1];
+    return `<article class="result-card fare-estimate-card">
+      <div class="provider">${provider} · ${esc(vehicle)} estimate</div>
+      <div class="price">${money(low)}–${money(high)}</div>
+      <div class="result-meta">Indicative estimate only · ${money(r.base[0])}–${money(r.base[1])} base + ${money(r.perKm[0])}–${money(r.perKm[1])}/km</div>
+      <div class="result-meta">Actual fare may change with city, traffic, waiting, demand, taxes and availability.</div>
+    </article>`;
+  };
   resultGrid.innerHTML = `
-    <article class="result-card"><div class="provider">Distance</div><div class="price">${route.km.toFixed(1)} km</div><div class="result-meta">${route.approx ? "Approximate (straight-line estimate)" : "By road"}</div></article>
-    <article class="result-card"><div class="provider">Travel time</div><div class="price">~${route.min} min</div><div class="result-meta">Driving estimate for a ${esc(vehicle.toLowerCase())} ride; real time depends on traffic</div></article>
-    <article class="result-card"><div class="provider">Live fares</div><div class="price">Coming soon</div><div class="result-meta">Needs official access from each provider. Check the final fare in their app.</div></article>`;
+    <article class="result-card"><div class="provider">Route distance</div><div class="price">${route.km.toFixed(1)} km</div><div class="result-meta">${route.approx ? "Approximate road-distance fallback" : "Road distance from route service"}</div></article>
+    <article class="result-card"><div class="provider">Estimated travel time</div><div class="price">~${route.min} min</div><div class="result-meta">Driving estimate; actual time depends on traffic</div></article>
+    ${estimateCard("Uber")}
+    ${estimateCard("Ola")}
+    ${estimateCard("Rapido")}
+    <article class="result-card estimate-disclaimer"><div class="provider">Important</div><div class="result-meta">These are Ride Zero's sample calculations, not prices received from Uber, Ola or Rapido. They are not live fares. Confirm the final price in the provider app before booking.</div></article>`;
 
   const copyText = `${a.label} → ${b.label}`;
   actions.innerHTML = `
     <a class="action-btn" href="${uberLink(a, b)}" target="_blank" rel="noopener">Open in Uber</a>
+    <a class="action-btn" href="https://book.olacabs.com/" target="_blank" rel="noopener">Open Ola</a>
     <a class="action-btn" href="https://www.rapido.bike/" target="_blank" rel="noopener">Open Rapido</a>
     <a class="action-btn ghost" href="https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lon}&destination=${b.lat},${b.lon}" target="_blank" rel="noopener">View on Google Maps</a>
     <button class="action-btn ghost" type="button" id="copy-route">Copy route</button>`;
@@ -123,7 +220,7 @@ form.addEventListener("submit", async (event) => {
     e.target.textContent = "Copied!";
   });
 
-  routeNote.textContent = "Uber opens with your route filled in. Rapido opens its site, so paste or type the route there. Final fares and availability are shown by each provider. Not affiliated with Uber or Rapido.";
+  routeNote.textContent = "Ride Zero's Uber, Ola and Rapido prices are indicative estimates calculated from editable sample rates, not live provider quotes. Open each provider app to confirm the actual fare. Ride Zero is independent and not affiliated with these providers.";
   results.hidden = false;
   drawMap(a, b, route);
   saveRecent(a, b);

@@ -25,3 +25,18 @@ IMPORTANT
 
 NEXT DEVELOPMENT STEP
 Replace the demo fare data with a backend API that calls only authorized provider integrations. Keep provider API credentials on the server, never in browser JavaScript.
+
+
+CURRENT LOCATION PICKUP
+- Click "Use my current location" below the pickup field.
+- Your browser will ask for location permission.
+- If allowed, Ride Zero fills the pickup coordinates and attempts to show a readable place name.
+- This works on HTTPS deployments (such as Vercel) or localhost. Browser geolocation usually will not work when opening index.html directly as a file.
+- Location is used in the browser for the route search; this feature does not send it to a Ride Zero account or store it on a server.
+
+FREE ESTIMATED FARES (IMPORTANT)
+- The comparison screen now displays indicative Uber, Ola and Rapido fare ranges.
+- These are Ride Zero calculations using sample base-fare and per-kilometre assumptions; they are NOT live provider quotes or official tariffs.
+- To tune the sample assumptions for your launch city, edit the `estimateRates` object near the route-submit handler in `script.js`.
+- Do not describe these prices as live fares. Confirm all real fares inside the provider apps.
+- The public OSRM demo routing service is for reasonable/testing use and has no uptime guarantee. Review its usage policy before production traffic: https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server

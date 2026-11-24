@@ -80,6 +80,12 @@
             <input id="pickup" name="pickup" type="text" placeholder="Enter pickup location" autocomplete="off" required>
             <ul class="suggestions" id="pickup-list" role="listbox" hidden></ul>
           </div>
+          <div class="current-location-row">
+            <button class="current-location-button" id="use-current-location" type="button">
+              <span aria-hidden="true">◎</span> Use my current location
+            </button>
+            <span id="location-status" class="location-status" role="status" aria-live="polite"></span>
+          </div>
 
           <label for="drop">Drop location</label>
           <div class="location-field drop-field">
@@ -112,7 +118,7 @@
           <button class="primary-button" type="submit">Compare rides <span aria-hidden="true">→</span></button>
           <p id="form-error" class="form-error" role="alert" hidden></p>
           <div class="recent" id="recent"></div>
-          <p class="form-note">Start typing and pick a place from the list. Live fares are not available yet.</p>
+          <p class="form-note">Start typing and pick a place from the list. Ride Zero shows indicative estimates, not live provider prices.</p>
         </form>
       </section>
     </section>
@@ -137,7 +143,7 @@
       <div class="feature-grid">
         <article class="feature"><span class="ico">📍</span><h3>Search any place in India</h3><p>Type a few letters and pick from live suggestions.</p></article>
         <article class="feature"><span class="ico">🛣️</span><h3>Real road distance</h3><p>See kilometres and travel time for your route.</p></article>
-        <article class="feature"><span class="ico">🚀</span><h3>Open Uber in one tap</h3><p>Your route arrives pre-filled. No retyping.</p></article>
+        <article class="feature"><span class="ico">🚀</span><h3>Compare estimated fares</h3><p>See indicative Uber, Ola and Rapido price ranges for your route.</p></article>
         <article class="feature"><span class="ico">🗺️</span><h3>Check it on Google Maps</h3><p>Preview the trip or copy it to share with a friend.</p></article>
       </div>
     </section>
@@ -153,9 +159,9 @@
 
     <section class="faq reveal" id="faq">
       <h2>Questions people ask</h2>
-      <details><summary>Does it show live fares?</summary><p>Not yet. Fares come from each provider, so open Uber or Rapido to see the final price.</p></details>
+      <details><summary>Does it show live fares?</summary><p>No. Ride Zero calculates indicative price ranges using sample base-fare and per-kilometre assumptions. These are not live quotes. Always confirm the final fare in the provider app.</p></details>
       <details><summary>Do I need an account?</summary><p>No. Enter your route and compare straight away.</p></details>
-      <details><summary>Is Ride Zero linked to Uber or Rapido?</summary><p>No. It is independent and only opens their sites with your route.</p></details>
+      <details><summary>Is Ride Zero linked to Uber or Rapido?</summary><p>No. Ride Zero is an independent fare-estimation website and is not affiliated with Uber, Ola or Rapido.</p></details>
     </section>
 
     <section class="about-section reveal" id="about">
@@ -167,7 +173,7 @@
 
   <footer>
     <span>© 2026 Ride Zero — </span>
-    <span>Independent concept; not affiliated with Uber or Rapido.</span>
+    <span>Independent concept; not affiliated with Uber, Ola or Rapido. Estimates are not live fares.</span>
   </footer>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="script.js"></script>
